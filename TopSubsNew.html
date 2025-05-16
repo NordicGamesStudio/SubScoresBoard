@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sub Leaderboard</title>
+  <style>
+    @font-face {
+      font-family: 'Minions Eng';
+      src: url('fonts/Roundo.ttf') format('truetype');
+    }
+
+    @font-face {
+      font-family: 'Dewberry Bold Italic';
+      src: url('fonts/dewberry-bold-italic.ttf') format('truetype');
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: #0e0e10;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #sub-container {
+      width: 100%;
+      max-width: 900px;
+      position: relative;
+    }
+
+    .sub-row {
+      display: flex;
+      align-items: center;
+      background: url(images/PaperBanner.png) no-repeat left / contain;
+      border-radius: 1rem;
+      padding: 1rem 1rem 1rem 6rem;
+      margin: 1rem 0 3rem 3rem;
+      overflow: visible;
+      position: relative;
+    }
+
+    .sub-icon {
+      position: absolute;
+      left: -90px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 150%;
+      aspect-ratio: 1/1;
+      object-fit: contain;
+      z-index: 1;
+    }
+
+    .sub-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: auto 0;
+      margin-left: -20%;
+      text-align: center;
+      flex: 1;
+      z-index: 2;
+    }
+
+    .sub-name {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #387192;
+      font-family: 'Minions Eng', sans-serif;
+    }
+
+    .sub-details {
+      font-size: 1rem;
+      line-height: 1.1;
+      opacity: 0.85;
+      color: #000;
+      font-family: 'Dewberry Bold Italic', sans-serif;
+    }
+
+    .sub-row.hidden {
+      visibility: hidden;
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+
+    .animate-in {
+      animation: slideIn 0.8s ease-out forwards;
+    }
+
+    .animate-out {
+      animation: slideOut 0.8s ease-in forwards;
+    }
+
+    @media screen and (max-width: 600px) {
+      .sub-row {
+        flex-direction: column;
+        align-items: center;
+        padding-left: 2rem;
+        margin-left: 0;
+      }
+
+      .sub-icon {
+        position: static;
+        transform: none;
+        margin-bottom: 1rem;
+        height: 100px;
+      }
+
+      .sub-text {
+        margin: 0;
+      }
+    }
+  </style>
+  <script src="https://unpkg.com/@streamerbot/client/dist/streamerbot-client.js"></script>
+</head>
+<body>
+  <div id="sub-container"></div>
+
+  <script>
+    const loopDelay = 5;        // між оновленими появами (сек)
+    const showDelay = 500;         // між появами (мс)
+    const displayDuration = 5000;  // скільки тримаються на екрані перед зникненням (мс)
+    const hideDelay = 500;         // між зникненнями (мс)
+    const appearDuration = 800;
+    const maxRows = 10;
+    const tierMultiplier = {
+        "Prime": 1,
+        "Tier 1": 1,
+        "Tier 2": 2,
+        "Tier 3": 5
+    };
+    const giftedWeight = 0.5;
+
+
+    const container = document.getElementById("sub-container");
+
+    const iconsProperty = { "Prime": 0, "Tier 1": 1, "Tier 2": 2, "Tier 3": 3 };
+    const tierPriority = { "Prime": 0, "Tier 1": 1, "Tier 2": 2, "Tier 3": 3 };
+
+    const subIcons = [
+        "images/MinionKing.png",
+        "images/MinionWithTaddy.png",
+        "images/MinionNude.png",
+        "images/Minion1.png",
+        "images/Minion2.png",
+        "images/Minion3.png",
+        "images/Minion4.png",
+        "images/Minion5.png",
+        "images/Minion6.png",
+        "images/Minion7.png"
+    ];
+
+    client = new StreamerbotClient({
+        host: 'localhost',
+        port: 8080,
+        secure: false,
+        debug: true,
+        /*subscribe: [
+            "Follow"
+        ]*/
+        onConnect: () => {
+            console.log("✅ Підключено до Streamer.bot")
+            fetchGlobals();
+        },
+        onDisconnect: () => {
+            console.warn("⚠️ Відключено від Streamer.bot")
+        }
+    });
+
+    async function fetchGlobals() {
+        const respGlobals = await client.getGlobals();
+        const subsRaw = respGlobals.variables.AllSubs?.value;
+
+        //console.log(subsRaw);
+
+        try {
+            const subs = JSON.parse(subsRaw);
+            if (Array.isArray(subs)) {
+            container.innerHTML = "";
+            //console.log(subs);
+            renderSubscribers(subs);
+            } else {
+            console.error("⚠️ AllSubs не є масивом:", subs);
+            }
+        } catch (e) {
+            console.error("❌ Некоректний JSON у AllSubs:", e);
+        }
+    }
+
+    client.on('Misc.GlobalVariableUpdated', (data) => {
+        if (data.data.name === "AllSubs") {
+            try {
+                const subs = JSON.parse(data.data.newValue);
+                container.innerHTML = ""; // очистити попередні
+                renderSubscribers(subs);
+            } catch (e) {
+                console.error("Invalid JSON in AllSubs", e);
+            }
+        }
+    });
+
+    const createSubElement = (sub, icon) => {
+        const row = document.createElement("div");
+        row.className = "sub-row hidden";
+
+        const img = document.createElement("img");
+        img.src = icon || "images/default.png";
+        img.alt = sub.User;
+        img.className = "sub-icon";
+
+        const textWrapper = document.createElement("div");
+        textWrapper.className = "sub-text";
+
+        const name = document.createElement("div");
+        name.className = "sub-name";
+        name.textContent = sub.User;
+
+        const details = document.createElement("div");
+        details.className = "sub-details";
+        details.innerHTML = `
+        <p>${sub.Months} місяців підписки, ${sub.Tier} рівня.</p>
+        <p>🎁 подаровано ${sub.GiftedCount} підписок</p>`;
+
+        textWrapper.appendChild(name);
+        textWrapper.appendChild(details);
+
+        row.appendChild(img);
+        row.appendChild(textWrapper);
+
+        return row;
+    };
+
+    const normalizeTier = (tier) => {
+        const map = {
+            "prime": "Prime",
+            "tier 1": "Tier 1",
+            "tier 2": "Tier 2",
+            "tier 3": "Tier 3"
+        };
+        return map[tier.toLowerCase()] || "Tier 1";
+    };
+
+    const sortSubscribers = (subs) => {
+        return subs.sort((a, b) => {
+            const aTier = normalizeTier(a.Tier);
+            const bTier = normalizeTier(b.Tier);
+
+            const aScore = (a.Months || 0) * (tierMultiplier[aTier] || 1) + (a.GiftedCount || 0) * giftedWeight;
+            const bScore = (b.Months || 0) * (tierMultiplier[bTier] || 1) + (b.GiftedCount || 0) * giftedWeight;
+            //console.log(bScore - aScore);
+            return bScore - aScore;
+        });
+    };
+
+    const renderSubscribers = (subs) => {
+        const sorted = sortSubscribers(subs).slice(0, maxRows);
+        const elements = [];
+
+        sorted.forEach((sub, i) => {
+            const icon = subIcons[i] || "images/default.png";
+            const el = createSubElement(sub, icon);
+            container.appendChild(el);
+            elements.push(el);
+            setTimeout(() => {
+                el.classList.remove("hidden");
+                requestAnimationFrame(() => el.classList.add("animate-in"));
+            }, i * showDelay);
+        });
+
+        const appearTotal = sorted.length * showDelay;
+
+        // Зникають з анімацією
+        setTimeout(() => {
+            let animationsDone = 0;
+            elements.slice().reverse().forEach((el, i) => {
+            setTimeout(() => {
+                el.classList.remove("animate-in");
+                void el.offsetWidth;
+                el.classList.add("animate-out");
+
+                el.addEventListener("animationend", () => {
+                el.remove();
+                animationsDone++;
+                if (animationsDone === elements.length) {
+                    setTimeout(fetchGlobals, loopDelay * 1000); // запуск наступного циклу після затримки
+                }
+                }, { once: true });
+            }, i * hideDelay);
+            });
+        }, appearTotal + displayDuration);
+    };
+
+    const handleAllSubsData = (jsonString) => {
+        try {
+            const subs = JSON.parse(jsonString);
+            if (Array.isArray(subs)) {
+            container.innerHTML = "";
+            renderSubscribers(subs);
+            } else {
+            console.error("⚠️ AllSubs не є масивом:", subs);
+            }
+        } catch (e) {
+            console.error("❌ Некоректний JSON у AllSubs:", e);
+        }
+    };
+
+    // Стартовий масив — заміни на AllSubs з Streamer.bot
+    /*const testSubs = [
+      { name: "ONE_BURNING_CHAIR", tier: "Tier 1", months: 5, gifted: 10, icon: "images/MinionKing.png" },
+      { name: "PARADOX___TTV", tier: "Prime", months: 5, gifted: 0, icon: "images/MinionWithTaddy.png" },
+      { name: "ANGEL_SPIRIT", tier: "Tier 2", months: 31, gifted: 20, icon: "images/MinionNude.png" },
+      { name: "ANGEL_SPIRIT", tier: "Tier 2", months: 31, gifted: 20, icon: "images/MinionNude.png" },
+      { name: "ANGEL_SPIRIT", tier: "Tier 2", months: 31, gifted: 20, icon: "images/MinionNude.png" }
+    ];
+
+    // Якщо працюєш без Streamer.bot:
+    //renderSubscribers(testSubs);
+
+    const handleAllSubsData = (jsonString) => {
+        try {
+            const subs = JSON.parse(jsonString);
+            container.innerHTML = ""; // Очистити попередній список
+            renderSubscribers(subs);
+        } catch (e) {
+            console.error("Invalid JSON in AllSubs:", e);
+        }
+    };*/
+  </script>
+</body>
+</html>
