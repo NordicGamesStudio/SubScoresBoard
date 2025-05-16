@@ -77,7 +77,7 @@
     .sub-details {
       font-size: 1rem;
       line-height: 1.1;
-      opacity: 0.85;
+      /*opacity: 0.85;*/
       color: #000;
       font-family: 'Dewberry Bold Italic', sans-serif;
     }
@@ -86,6 +86,11 @@
         font-family: 'Minions Eng', sans-serif;
         color: #387192;
         font-size: 1.1rem;
+    }
+
+    .emoji-shadow {
+        display: inline-block;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
     }
 
     .sub-row.hidden {
@@ -239,7 +244,7 @@
         details.innerHTML = `
         <p><span class="highlight">${sub.Months}</span> місяців підписки, 
             <span class="highlight">${sub.Tier}</span> рівня.</p>
-        <p>Подаровано <span class="highlight">🎁 ${sub.GiftedCount}</span> підписок</p>`;
+        <p>Подаровано <span class="highlight"><span class="emoji-shadow">🎁</span> ${sub.GiftedCount}</span> підписок</p>`;
 
         textWrapper.appendChild(name);
         textWrapper.appendChild(details);
