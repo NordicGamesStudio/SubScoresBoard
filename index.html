@@ -82,6 +82,12 @@
       font-family: 'Dewberry Bold Italic', sans-serif;
     }
 
+    .highlight {
+        font-family: 'Minions Eng', sans-serif;
+        color: #387192;
+        font-size: 1.1rem;
+    }
+
     .sub-row.hidden {
       visibility: hidden;
     }
@@ -231,8 +237,9 @@
         const details = document.createElement("div");
         details.className = "sub-details";
         details.innerHTML = `
-        <p>${sub.Months} місяців підписки, ${sub.Tier} рівня.</p>
-        <p>🎁 подаровано ${sub.GiftedCount} підписок</p>`;
+        <p><span class="highlight">${sub.Months}</span> місяців підписки, 
+            <span class="highlight">${sub.Tier}</span> рівня.</p>
+        <p>Подаровано <span class="highlight">🎁 ${sub.GiftedCount}</span> підписок</p>`;
 
         textWrapper.appendChild(name);
         textWrapper.appendChild(details);
