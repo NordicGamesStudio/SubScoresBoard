@@ -155,6 +155,8 @@
     };
     const giftedWeight = 0.5;
 
+    let isShowing = false;         // чи вже йде показ
+    let nextLoopTimeout = null;    // посилання на наступний запуск
 
     const container = document.getElementById("sub-container");
 
@@ -184,7 +186,8 @@
         ]*/
         onConnect: () => {
             console.log("✅ Підключено до Streamer.bot")
-            fetchGlobals();
+            //fetchGlobals();
+            showSubscribersLoop(); // запуск єдиного циклу
         },
         onDisconnect: () => {
             console.warn("⚠️ Відключено від Streamer.bot")
@@ -215,13 +218,42 @@
         if (data.data.name === "AllSubs") {
             try {
                 const subs = JSON.parse(data.data.newValue);
-                container.innerHTML = ""; // очистити попередні
-                renderSubscribers(subs);
+                // Оновлюємо лише якщо не показується зараз
+                if (!isShowing) {
+                    container.innerHTML = "";
+                    renderSubscribers(subs);
+                }
             } catch (e) {
                 console.error("Invalid JSON in AllSubs", e);
             }
         }
     });
+
+    async function showSubscribersLoop() {
+        if (isShowing) return; // не запускати, якщо вже йде показ
+
+        isShowing = true;
+
+        const respGlobals = await client.getGlobals();
+        const subsRaw = respGlobals.variables.AllSubs?.value;
+
+        try {
+            const subs = JSON.parse(subsRaw);
+            if (Array.isArray(subs)) {
+                container.innerHTML = "";
+                await renderSubscribers(subs);
+            } else {
+                console.error("⚠️ AllSubs не є масивом:", subs);
+            }
+        } catch (e) {
+            console.error("❌ Некоректний JSON у AllSubs:", e);
+        }
+
+        isShowing = false;
+
+        // Наступний запуск через loopDelay секунд
+        nextLoopTimeout = setTimeout(showSubscribersLoop, loopDelay * 1000);
+    }
 
     const createSubElement = (sub, icon) => {
         const row = document.createElement("div");
@@ -277,7 +309,7 @@
         });
     };
 
-    const renderSubscribers = (subs) => {
+    const renderSubscribers = async (subs) => {
         const sorted = sortSubscribers(subs).slice(0, maxRows);
         const elements = [];
 
@@ -294,25 +326,26 @@
 
         const appearTotal = sorted.length * showDelay;
 
-        // Зникають з анімацією
-        setTimeout(() => {
-            let animationsDone = 0;
-            elements.slice().reverse().forEach((el, i) => {
+        await new Promise(resolve => {
             setTimeout(() => {
-                el.classList.remove("animate-in");
-                void el.offsetWidth;
-                el.classList.add("animate-out");
+                let animationsDone = 0;
+                elements.slice().reverse().forEach((el, i) => {
+                    setTimeout(() => {
+                        el.classList.remove("animate-in");
+                        void el.offsetWidth;
+                        el.classList.add("animate-out");
 
-                el.addEventListener("animationend", () => {
-                el.remove();
-                animationsDone++;
-                if (animationsDone === elements.length) {
-                    setTimeout(fetchGlobals, loopDelay * 1000); // запуск наступного циклу після затримки
-                }
-                }, { once: true });
-            }, i * hideDelay);
-            });
-        }, appearTotal + displayDuration);
+                        el.addEventListener("animationend", () => {
+                            el.remove();
+                            animationsDone++;
+                            if (animationsDone === elements.length) {
+                                resolve(); // тільки після всіх зникнень
+                            }
+                        }, { once: true });
+                    }, i * hideDelay);
+                });
+            }, appearTotal + displayDuration);
+        });
     };
 
     const handleAllSubsData = (jsonString) => {
