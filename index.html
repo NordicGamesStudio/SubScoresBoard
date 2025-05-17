@@ -216,7 +216,7 @@
     }
 
     client.on('Misc.GlobalVariableUpdated', (data) => {
-        if (data.data.name === "AllSubs") {
+        /*if (data.data.name === "AllSubs") {
             try {
                 const subs = JSON.parse(data.data.newValue);
                 // Оновлюємо лише якщо не показується зараз
@@ -227,7 +227,7 @@
             } catch (e) {
                 console.error("Invalid JSON in AllSubs", e);
             }
-        }
+        }*/
     });
 
     async function showSubscribersLoop() {
